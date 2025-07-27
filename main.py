@@ -37,6 +37,15 @@ class Game:
         self.show_info_panel = False
         self.info_text = ""
         
+        # Car control slider
+        self.slider_dragging = False
+        self.slider_width = 400
+        self.slider_height = 20
+        self.slider_x = (SCREEN_WIDTH - self.slider_width) // 2
+        self.slider_y = SCREEN_HEIGHT - 60
+        self.slider_handle_radius = 15
+        self.slider_handle_x = self.slider_x + 50  # Initial position
+        
         # Initialize objects
         self.earth = Earth(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
         self.satellite = None
@@ -53,7 +62,17 @@ class Game:
                 self.running = False
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:  # Left click
-                    self.handle_click(event.pos)
+                    # Check if clicking on slider handle
+                    if self.earth_clicked and self.is_slider_handle_clicked(event.pos):
+                        self.slider_dragging = True
+                    else:
+                        self.handle_click(event.pos)
+            elif event.type == pygame.MOUSEBUTTONUP:
+                if event.button == 1:  # Left click release
+                    self.slider_dragging = False
+            elif event.type == pygame.MOUSEMOTION:
+                if self.slider_dragging:
+                    self.update_slider_position(event.pos)
                     
     def handle_click(self, pos):
         # Check Earth click
@@ -88,6 +107,33 @@ class Game:
         if self.show_info_panel:
             if not self.info_panel.is_clicked(pos):
                 self.show_info_panel = False
+    
+    def is_slider_handle_clicked(self, pos):
+        """Check if the slider handle was clicked"""
+        mouse_x, mouse_y = pos
+        handle_center_x = self.slider_handle_x
+        handle_center_y = self.slider_y + self.slider_height // 2
+        
+        # Check if click is within handle radius
+        distance = math.sqrt((mouse_x - handle_center_x) ** 2 + (mouse_y - handle_center_y) ** 2)
+        return distance <= self.slider_handle_radius
+    
+    def update_slider_position(self, pos):
+        """Update slider handle position and sync with car"""
+        mouse_x, mouse_y = pos
+        
+        # Constrain handle to slider bounds
+        self.slider_handle_x = max(self.slider_x, 
+                                  min(self.slider_x + self.slider_width, mouse_x))
+        
+        # Update car position based on slider
+        if self.car:
+            # Calculate car position based on slider position
+            slider_ratio = (self.slider_handle_x - self.slider_x) / self.slider_width
+            # Map slider position to car movement range
+            car_min_x = self.school.x + 50 if self.school else 200
+            car_max_x = SCREEN_WIDTH - 100
+            self.car.x = car_min_x + slider_ratio * (car_max_x - car_min_x)
                 
     def spawn_scene_elements(self):
         """Spawn all scene elements when Earth is clicked"""
@@ -102,6 +148,9 @@ class Game:
         # Create car at school
         self.car = Car(self.school.x + 50, self.school.y + 30)
         
+        # Initialize slider handle position to match car
+        self.update_slider_from_car_position()
+        
         # Create mobile phone near the ground (on grassland)
         grass_y = self.earth.y + self.earth.radius + 50
         self.mobile = Mobile(SCREEN_WIDTH - 200, grass_y + 30)
@@ -111,6 +160,15 @@ class Game:
         
         # Create connection lines
         self.connection_lines = ConnectionLines()
+    
+    def update_slider_from_car_position(self):
+        """Update slider handle position based on current car position"""
+        if self.car and self.school:
+            car_min_x = self.school.x + 50
+            car_max_x = SCREEN_WIDTH - 100
+            car_ratio = (self.car.x - car_min_x) / (car_max_x - car_min_x)
+            car_ratio = max(0, min(1, car_ratio))  # Clamp between 0 and 1
+            self.slider_handle_x = self.slider_x + car_ratio * self.slider_width
         
     def update(self):
         # Update Earth rotation
@@ -121,10 +179,9 @@ class Game:
             if self.satellite:
                 self.satellite.update()
                 
-            # Update car movement
-            if self.car:
-                self.car.update()
-                
+            # Update car movement (now controlled by slider, not automatic)
+            # Car position is updated by slider interaction
+            
             # Update radiation waves
             if self.radiation_waves:
                 self.radiation_waves.update(self.satellite.x, self.satellite.y)
@@ -266,6 +323,58 @@ class Game:
                     # Stem
                     pygame.draw.line(self.screen, (0, 100, 0), (x, y), (x, y + 5), 1)
     
+    def draw_car_slider(self):
+        """Draw the interactive car position slider"""
+        if not self.earth_clicked:
+            return
+            
+        # Draw slider track
+        track_rect = pygame.Rect(self.slider_x, self.slider_y, self.slider_width, self.slider_height)
+        pygame.draw.rect(self.screen, (100, 100, 100), track_rect, border_radius=10)
+        pygame.draw.rect(self.screen, (200, 200, 200), 
+                        (track_rect.x + 2, track_rect.y + 2, track_rect.width - 4, track_rect.height - 4), 
+                        border_radius=8)
+        
+        # Draw slider handle
+        handle_center_y = self.slider_y + self.slider_height // 2
+        
+        # Handle shadow
+        pygame.draw.circle(self.screen, (50, 50, 50), 
+                          (int(self.slider_handle_x + 2), int(handle_center_y + 2)), 
+                          self.slider_handle_radius)
+        
+        # Handle body
+        pygame.draw.circle(self.screen, (70, 130, 180), 
+                          (int(self.slider_handle_x), int(handle_center_y)), 
+                          self.slider_handle_radius)
+        
+        # Handle highlight
+        pygame.draw.circle(self.screen, (100, 150, 200), 
+                          (int(self.slider_handle_x), int(handle_center_y)), 
+                          self.slider_handle_radius - 3)
+        
+        # Handle border
+        pygame.draw.circle(self.screen, (40, 40, 40), 
+                          (int(self.slider_handle_x), int(handle_center_y)), 
+                          self.slider_handle_radius, 2)
+        
+        # Draw slider label
+        pygame.font.init()
+        font = pygame.font.Font(None, 24)
+        label_text = font.render("Car Position Control", True, (0, 0, 0))
+        label_rect = label_text.get_rect(center=(SCREEN_WIDTH // 2, self.slider_y - 25))
+        self.screen.blit(label_text, label_rect)
+        
+        # Draw position indicators
+        # Left indicator
+        left_text = font.render("School", True, (0, 0, 0))
+        self.screen.blit(left_text, (self.slider_x - 50, self.slider_y + 25))
+        
+        # Right indicator
+        right_text = font.render("Mobile", True, (0, 0, 0))
+        right_rect = right_text.get_rect()
+        self.screen.blit(right_text, (self.slider_x + self.slider_width - right_rect.width + 50, self.slider_y + 25))
+    
     def render(self):
         self.screen.fill(SKY_BLUE)  # Realistic sky background
         
@@ -299,6 +408,9 @@ class Game:
             # Draw connection lines
             if self.connection_lines:
                 self.connection_lines.draw(self.screen)
+        
+        # Draw car control slider
+        self.draw_car_slider()
         
         # Draw info panel if needed
         if self.show_info_panel:

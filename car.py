@@ -26,10 +26,10 @@ class Car:
         self.chrome_silver = (220, 220, 220) # Chrome details
         
     def update(self):
-        """Update car movement"""
-        # Move car to the right
-        if self.x - self.start_x < self.max_distance:
-            self.x += self.speed
+        """Update car (position now controlled externally by slider)"""
+        # Car position is now controlled by the slider in main.py
+        # No automatic movement here
+        pass
     
     def draw(self, screen):
         """Draw the realistic car with detailed features"""
