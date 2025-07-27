@@ -57,10 +57,12 @@ class Game:
                     
     def handle_click(self, pos):
         # Check Earth click
-        if self.earth.is_clicked(pos):
+        if self.earth.is_clicked(pos) and self.earth.visible:
             if not self.earth_clicked:
                 self.earth_clicked = True
                 self.spawn_scene_elements()
+                # Make Earth disappear after spawning scene elements
+                self.earth.visible = False
             else:
                 self.show_info_panel = True
                 self.info_text = self.earth.get_info()

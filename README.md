@@ -12,7 +12,7 @@ An educational 2D animated interactive scene built with Python and Pygame, demon
 - **School Building**: Realistic architecture with detailed windows and doors
 
 ### Realistic Graphics
-- **Earth**: Deep ocean blue with green/brown continents and white ice caps
+- **Earth**: High-definition Earth image with realistic rotation and 3D shadow effects
 - **Sky**: Natural sky blue background
 - **Grassland**: Realistic green grass with varied texture and natural colors
 - **Satellite**: Dark gray body with blue solar panels and proper positioning
@@ -58,13 +58,15 @@ Each element provides information about:
 ```
 Digital_mapping/
 ├── main.py              # Main game loop and coordination
-├── earth.py             # Earth class with rotation and continents
+├── earth.py             # Earth class with image loading and rotation
 ├── satellite.py         # Satellite with solar panels and rotation
 ├── car.py              # Moving car with GPS capabilities
 ├── mobile.py           # Mobile phone with signal animations
 ├── school.py           # School building with detailed architecture
 ├── info_panel.py       # Information display system
 ├── animation_effects.py # Radiation waves and connection lines
+├── assets/             # Image assets folder
+│   └── earth_hd.jpg    # High-definition Earth image
 └── README.md           # This file
 ```
 
