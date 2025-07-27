@@ -11,6 +11,51 @@ from animation_effects import RadiationWaves, ConnectionLines
 
 # Initialize Pygame
 pygame.init()
+    
+    def draw_mountains(self):
+        """Draw distant mountains for atmospheric depth"""
+        # Get horizon line based on Earth position
+        horizon_y = self.earth.y + self.earth.radius + 30
+        
+        # Mountain ranges at different distances for parallax effect
+        mountain_ranges = [
+            {'peaks': [(0, 40), (200, 60), (400, 35), (600, 55), (800, 30), (1000, 45), (1200, 25)], 'color': MOUNTAIN_PURPLE, 'alpha': 60},
+            {'peaks': [(100, 30), (300, 45), (500, 25), (700, 40), (900, 20), (1100, 35)], 'color': MOUNTAIN_BLUE, 'alpha': 40},
+        ]
+        
+        for mountain_range in mountain_ranges:
+            # Create surface for alpha blending
+            mountain_surface = pygame.Surface((SCREEN_WIDTH, 100), pygame.SRCALPHA)
+            
+            # Create mountain silhouette points
+            points = [(0, 100)]  # Start from bottom left
+            
+            for x, height in mountain_range['peaks']:
+                points.append((x, 100 - height))
+            
+            points.append((SCREEN_WIDTH, 100))  # End at bottom right
+            points.append((SCREEN_WIDTH, 100))  # Close the polygon
+            points.append((0, 100))
+            
+            # Draw mountain silhouette
+            pygame.draw.polygon(mountain_surface, (*mountain_range['color'], mountain_range['alpha']), points)
+            
+            # Blit to main screen
+            self.screen.blit(mountain_surface, (0, horizon_y - 70))
+        
+        # Add atmospheric haze
+        haze_surface = pygame.Surface((SCREEN_WIDTH, 50), pygame.SRCALPHA)
+        for y in range(50):
+            alpha = int(30 * (1 - y / 50))  # Fade from opaque to transparent
+            if alpha > 0:
+                pygame.draw.line(haze_surface, (*HORIZON_MIST, alpha), (0, y), (SCREEN_WIDTH, y))
+        
+        self.screen.blit(haze_surface, (0, horizon_y - 20))
+
+    def draw_grassland(self):
+
+# Initialize Pygame
+pygame.init()
 
 # Constants
 SCREEN_WIDTH = 1200
@@ -70,43 +115,65 @@ class Game:
                 self.running = False
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:  # Left click
-                    pos = pygame.mouse.get_pos()
+                    self.handle_click(event.pos)
                     
-                    # Check if info panel close button was clicked
-                    if self.show_info_panel:
-                        if not self.info_panel.is_clicked(pos):
-                            self.show_info_panel = False
-                        continue
-                    
-                    # Check if Earth was clicked
-                    if self.earth.is_clicked(pos):
-                        if not self.earth_clicked:
-                            self.earth_clicked = True
-                            # Create satellite, car, mobile, and school when Earth is clicked
-                            self.satellite = Satellite(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 - 150)
-                            self.car = Car(SCREEN_WIDTH // 2 + 200, SCREEN_HEIGHT // 2 + 100)
-                            self.mobile = Mobile(SCREEN_WIDTH // 2 - 200, SCREEN_HEIGHT // 2 + 120)
-                            self.school = School(SCREEN_WIDTH // 2 + 150, SCREEN_HEIGHT // 2 - 80)
-                            
-                            # Create animation effects
-                            self.radiation_waves = RadiationWaves()
-                            self.connection_lines = ConnectionLines()
-                    
-                    # Check clicks on objects after Earth is clicked
-                    elif self.earth_clicked:
-                        if self.satellite and self.satellite.is_clicked(pos):
-                            self.info_text = self.satellite.get_info()
-                            self.show_info_panel = True
-                        elif self.car and self.car.is_clicked(pos):
-                            self.info_text = self.car.get_info()
-                            self.show_info_panel = True
-                        elif self.mobile and self.mobile.is_clicked(pos):
-                            self.info_text = self.mobile.get_info()
-                            self.show_info_panel = True
-                        elif self.school and self.school.is_clicked(pos):
-                            self.info_text = self.school.get_info()
-                            self.show_info_panel = True
-
+    def handle_click(self, pos):
+        # Check Earth click
+        if self.earth.is_clicked(pos) and self.earth.visible:
+            if not self.earth_clicked:
+                self.earth_clicked = True
+                self.spawn_scene_elements()
+                # Make Earth disappear after spawning scene elements
+                self.earth.visible = False
+            else:
+                self.show_info_panel = True
+                self.info_text = self.earth.get_info()
+        
+        # Check other elements if they exist
+        if self.satellite and self.satellite.is_clicked(pos):
+            self.show_info_panel = True
+            self.info_text = self.satellite.get_info()
+            
+        if self.car and self.car.is_clicked(pos):
+            self.show_info_panel = True
+            self.info_text = self.car.get_info()
+            
+        if self.mobile and self.mobile.is_clicked(pos):
+            self.show_info_panel = True
+            self.info_text = self.mobile.get_info()
+            
+        if self.school and self.school.is_clicked(pos):
+            self.show_info_panel = True
+            self.info_text = self.school.get_info()
+            
+        # Check if clicking outside info panel to close it
+        if self.show_info_panel:
+            if not self.info_panel.is_clicked(pos):
+                self.show_info_panel = False
+                
+    def spawn_scene_elements(self):
+        """Spawn all scene elements when Earth is clicked"""
+        # Create satellite high above Earth (topmost part)
+        self.satellite = Satellite(self.earth.x, 80)
+        
+        # Create grassland (will be drawn in render method)
+        
+        # Create school on grassland
+        self.school = School(200, SCREEN_HEIGHT - 150)
+        
+        # Create car at school
+        self.car = Car(self.school.x + 50, self.school.y + 30)
+        
+        # Create mobile phone near the ground (on grassland)
+        grass_y = self.earth.y + self.earth.radius + 50
+        self.mobile = Mobile(SCREEN_WIDTH - 200, grass_y + 30)
+        
+        # Create radiation waves
+        self.radiation_waves = RadiationWaves(self.satellite.x, self.satellite.y)
+        
+        # Create connection lines
+        self.connection_lines = ConnectionLines()
+        
     def update(self):
         # Update Earth rotation
         self.earth.update()
@@ -207,46 +274,6 @@ class Game:
             start_x = sun_x + math.cos(angle) * 30
             start_y = sun_y + math.sin(angle) * 30
             pygame.draw.line(self.screen, SUN_YELLOW, (start_x, start_y), (end_x, end_y), 3)
-    
-    def draw_mountains(self):
-        """Draw distant mountains for atmospheric depth"""
-        # Get horizon line based on Earth position
-        horizon_y = self.earth.y + self.earth.radius + 30
-        
-        # Mountain ranges at different distances for parallax effect
-        mountain_ranges = [
-            {'peaks': [(0, 40), (200, 60), (400, 35), (600, 55), (800, 30), (1000, 45), (1200, 25)], 'color': MOUNTAIN_PURPLE, 'alpha': 60},
-            {'peaks': [(100, 30), (300, 45), (500, 25), (700, 40), (900, 20), (1100, 35)], 'color': MOUNTAIN_BLUE, 'alpha': 40},
-        ]
-        
-        for mountain_range in mountain_ranges:
-            # Create surface for alpha blending
-            mountain_surface = pygame.Surface((SCREEN_WIDTH, 100), pygame.SRCALPHA)
-            
-            # Create mountain silhouette points
-            points = [(0, 100)]  # Start from bottom left
-            
-            for x, height in mountain_range['peaks']:
-                points.append((x, 100 - height))
-            
-            points.append((SCREEN_WIDTH, 100))  # End at bottom right
-            points.append((SCREEN_WIDTH, 100))  # Close the polygon
-            points.append((0, 100))
-            
-            # Draw mountain silhouette
-            pygame.draw.polygon(mountain_surface, (*mountain_range['color'], mountain_range['alpha']), points)
-            
-            # Blit to main screen
-            self.screen.blit(mountain_surface, (0, horizon_y - 70))
-        
-        # Add atmospheric haze
-        haze_surface = pygame.Surface((SCREEN_WIDTH, 50), pygame.SRCALPHA)
-        for y in range(50):
-            alpha = int(30 * (1 - y / 50))  # Fade from opaque to transparent
-            if alpha > 0:
-                pygame.draw.line(haze_surface, (*HORIZON_MIST, alpha), (0, y), (SCREEN_WIDTH, y))
-        
-        self.screen.blit(haze_surface, (0, horizon_y - 20))
     
     def draw_clouds(self):
         """Draw realistic animated clouds"""
@@ -375,7 +402,7 @@ class Game:
         for x, y in dirt_patches:
             pygame.draw.ellipse(self.screen, EARTH_BROWN, (x, y, 15, 8))
             pygame.draw.ellipse(self.screen, (120, 60, 20), (x + 2, y + 1, 10, 5))
-
+    
     def render(self):
         # Draw realistic sky with gradient, sun, and clouds
         self.draw_realistic_sky()
