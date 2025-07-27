@@ -256,11 +256,11 @@ class School:
     def draw_school_sign(self, screen):
         """Draw realistic school identification sign with text"""
         # Sign post
-        post_rect = pygame.Rect(self.x - 2, self.y - self.height//2 - 55, 4, 15)
+        post_rect = pygame.Rect(self.x - 2, self.y - self.height//2 - 65, 4, 25)
         pygame.draw.rect(screen, (101, 67, 33), post_rect)
         
-        # Main sign board
-        sign_rect = pygame.Rect(self.x - 35, self.y - self.height//2 - 55, 70, 20)
+        # Main sign board (made larger to accommodate longer text)
+        sign_rect = pygame.Rect(self.x - 50, self.y - self.height//2 - 65, 100, 30)
         pygame.draw.rect(screen, self.sign_white, sign_rect)
         pygame.draw.rect(screen, self.sign_text, sign_rect, 2)
         
@@ -271,21 +271,23 @@ class School:
         pygame.draw.rect(screen, self.sign_white, sign_rect)
         pygame.draw.rect(screen, self.sign_text, sign_rect, 2)
         
-        # School text
+        # School text - split into two lines to fit properly
         try:
-            text_surface = self.sign_font.render("DIGITAL MAPPING", True, self.sign_text)
-            text_rect = text_surface.get_rect(center=(self.x, self.y - self.height//2 - 48))
+            # First line
+            text_surface = self.sign_font.render("VIDYASHILP PUBLIC", True, self.sign_text)
+            text_rect = text_surface.get_rect(center=(self.x, self.y - self.height//2 - 55))
             screen.blit(text_surface, text_rect)
             
+            # Second line
             text_surface2 = self.sign_font.render("SCHOOL", True, self.sign_text)
-            text_rect2 = text_surface2.get_rect(center=(self.x, self.y - self.height//2 - 38))
+            text_rect2 = text_surface2.get_rect(center=(self.x, self.y - self.height//2 - 45))
             screen.blit(text_surface2, text_rect2)
         except:
             # Fallback if font fails
             pygame.draw.rect(screen, self.sign_text, 
-                            (self.x - 30, self.y - self.height//2 - 50, 60, 3))
+                            (self.x - 45, self.y - self.height//2 - 58, 90, 3))
             pygame.draw.rect(screen, self.sign_text, 
-                            (self.x - 20, self.y - self.height//2 - 42, 40, 3))
+                            (self.x - 20, self.y - self.height//2 - 48, 40, 3))
     
     def is_clicked(self, pos):
         """Check if school was clicked"""
@@ -295,7 +297,7 @@ class School:
     
     def get_info(self):
         """Return information about the school"""
-        return """DIGITAL MAPPING SCHOOL
+        return """VIDYASHILP PUBLIC SCHOOL
         
 Educational institution teaching modern
 geography and satellite technology.

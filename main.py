@@ -20,22 +20,9 @@ FPS = 60
 # Colors
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
-SKY_BLUE_TOP = (87, 138, 201)     # Darker blue at top
-SKY_BLUE_MID = (135, 206, 235)    # Medium blue in middle
-SKY_BLUE_BOTTOM = (176, 224, 230) # Lighter blue at bottom
-CLOUD_WHITE = (255, 255, 255)     # Pure white clouds
-CLOUD_GRAY = (240, 240, 240)      # Light gray cloud shadows
-SUN_YELLOW = (255, 255, 0)        # Bright sun
-SUN_GLOW = (255, 255, 200)        # Sun glow effect
-
-GRASS_GREEN = (34, 139, 34)       # Forest green for grass
-DARK_GRASS = (0, 100, 0)          # Darker green for grass texture
-LIGHT_GRASS = (50, 205, 50)       # Lighter green highlights
-EARTH_BROWN = (139, 69, 19)       # Soil color
-FLOWER_COLORS = [(255, 0, 127), (255, 20, 147), (255, 105, 180), (255, 255, 0), (255, 165, 0)]
-MOUNTAIN_PURPLE = (72, 61, 139)   # Distant mountain color
-MOUNTAIN_BLUE = (100, 149, 237)   # Mountain highlights
-HORIZON_MIST = (230, 230, 250)    # Atmospheric haze
+SKY_BLUE = (135, 206, 235)  # More realistic sky color
+GRASS_GREEN = (34, 139, 34)  # Forest green for grass
+DARK_GRASS = (0, 100, 0)    # Darker green for grass texture
 BROWN = (101, 67, 33)
 
 class Game:
@@ -60,65 +47,74 @@ class Game:
         self.radiation_waves = None
         self.connection_lines = None
         
-        # Sky and weather animation variables
-        self.cloud_offset = 0
-        self.sun_glow_pulse = 0
-        
     def handle_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:  # Left click
-                    pos = pygame.mouse.get_pos()
+                    self.handle_click(event.pos)
                     
-                    # Check if info panel close button was clicked
-                    if self.show_info_panel:
-                        if not self.info_panel.is_clicked(pos):
-                            self.show_info_panel = False
-                        continue
-                    
-                    # Check if Earth was clicked
-                    if self.earth.is_clicked(pos):
-                        if not self.earth_clicked:
-                            self.earth_clicked = True
-                            # Create satellite, car, mobile, and school when Earth is clicked
-                            self.satellite = Satellite(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 - 150)
-                            self.car = Car(SCREEN_WIDTH // 2 + 200, SCREEN_HEIGHT // 2 + 100)
-                            self.mobile = Mobile(SCREEN_WIDTH // 2 - 200, SCREEN_HEIGHT // 2 + 120)
-                            self.school = School(SCREEN_WIDTH // 2 + 150, SCREEN_HEIGHT // 2 - 80)
-                            
-                            # Create animation effects
-                            self.radiation_waves = RadiationWaves()
-                            self.connection_lines = ConnectionLines()
-                    
-                    # Check clicks on objects after Earth is clicked
-                    elif self.earth_clicked:
-                        if self.satellite and self.satellite.is_clicked(pos):
-                            self.info_text = self.satellite.get_info()
-                            self.show_info_panel = True
-                        elif self.car and self.car.is_clicked(pos):
-                            self.info_text = self.car.get_info()
-                            self.show_info_panel = True
-                        elif self.mobile and self.mobile.is_clicked(pos):
-                            self.info_text = self.mobile.get_info()
-                            self.show_info_panel = True
-                        elif self.school and self.school.is_clicked(pos):
-                            self.info_text = self.school.get_info()
-                            self.show_info_panel = True
-
+    def handle_click(self, pos):
+        # Check Earth click
+        if self.earth.is_clicked(pos) and self.earth.visible:
+            if not self.earth_clicked:
+                self.earth_clicked = True
+                self.spawn_scene_elements()
+                # Make Earth disappear after spawning scene elements
+                self.earth.visible = False
+            else:
+                self.show_info_panel = True
+                self.info_text = self.earth.get_info()
+        
+        # Check other elements if they exist
+        if self.satellite and self.satellite.is_clicked(pos):
+            self.show_info_panel = True
+            self.info_text = self.satellite.get_info()
+            
+        if self.car and self.car.is_clicked(pos):
+            self.show_info_panel = True
+            self.info_text = self.car.get_info()
+            
+        if self.mobile and self.mobile.is_clicked(pos):
+            self.show_info_panel = True
+            self.info_text = self.mobile.get_info()
+            
+        if self.school and self.school.is_clicked(pos):
+            self.show_info_panel = True
+            self.info_text = self.school.get_info()
+            
+        # Check if clicking outside info panel to close it
+        if self.show_info_panel:
+            if not self.info_panel.is_clicked(pos):
+                self.show_info_panel = False
+                
+    def spawn_scene_elements(self):
+        """Spawn all scene elements when Earth is clicked"""
+        # Create satellite high above Earth (topmost part)
+        self.satellite = Satellite(self.earth.x, 80)
+        
+        # Create grassland (will be drawn in render method)
+        
+        # Create school on grassland
+        self.school = School(200, SCREEN_HEIGHT - 150)
+        
+        # Create car at school
+        self.car = Car(self.school.x + 50, self.school.y + 30)
+        
+        # Create mobile phone near the ground (on grassland)
+        grass_y = self.earth.y + self.earth.radius + 50
+        self.mobile = Mobile(SCREEN_WIDTH - 200, grass_y + 30)
+        
+        # Create radiation waves
+        self.radiation_waves = RadiationWaves(self.satellite.x, self.satellite.y)
+        
+        # Create connection lines
+        self.connection_lines = ConnectionLines()
+        
     def update(self):
         # Update Earth rotation
         self.earth.update()
-        
-        # Update sky animations
-        self.cloud_offset += 0.5  # Slow cloud movement
-        if self.cloud_offset > SCREEN_WIDTH + 200:
-            self.cloud_offset = -200
-            
-        self.sun_glow_pulse += 0.05
-        if self.sun_glow_pulse > 2 * math.pi:
-            self.sun_glow_pulse = 0
         
         if self.earth_clicked:
             # Update satellite
@@ -128,10 +124,6 @@ class Game:
             # Update car movement
             if self.car:
                 self.car.update()
-                
-            # Update mobile phone
-            if self.mobile:
-                self.mobile.update()
                 
             # Update radiation waves
             if self.radiation_waves:
@@ -145,246 +137,143 @@ class Game:
                     (self.mobile.x, self.mobile.y)
                 )
     
-    def draw_realistic_sky(self):
-        """Draw a realistic sky with gradient, sun, and animated clouds"""
-        # Draw sky gradient from top to bottom
-        for y in range(SCREEN_HEIGHT):
-            # Calculate gradient ratio
-            ratio = y / SCREEN_HEIGHT
-            
-            # Interpolate between sky colors
-            if ratio < 0.3:  # Top portion - darker blue
-                blend_ratio = ratio / 0.3
-                r = int(SKY_BLUE_TOP[0] * (1 - blend_ratio) + SKY_BLUE_MID[0] * blend_ratio)
-                g = int(SKY_BLUE_TOP[1] * (1 - blend_ratio) + SKY_BLUE_MID[1] * blend_ratio)
-                b = int(SKY_BLUE_TOP[2] * (1 - blend_ratio) + SKY_BLUE_MID[2] * blend_ratio)
-            else:  # Bottom portion - lighter blue
-                blend_ratio = (ratio - 0.3) / 0.7
-                r = int(SKY_BLUE_MID[0] * (1 - blend_ratio) + SKY_BLUE_BOTTOM[0] * blend_ratio)
-                g = int(SKY_BLUE_MID[1] * (1 - blend_ratio) + SKY_BLUE_BOTTOM[1] * blend_ratio)
-                b = int(SKY_BLUE_MID[2] * (1 - blend_ratio) + SKY_BLUE_BOTTOM[2] * blend_ratio)
-            
-            pygame.draw.line(self.screen, (r, g, b), (0, y), (SCREEN_WIDTH, y))
-        
-        # Draw animated sun
-        self.draw_sun()
-        
-        # Draw distant mountains for depth
-        self.draw_mountains()
-        
-        # Draw animated clouds
-        self.draw_clouds()
-    
-    def draw_sun(self):
-        """Draw an animated sun with glow effect"""
-        sun_x = SCREEN_WIDTH - 150
-        sun_y = 100
-        
-        # Sun glow effect with pulsing
-        glow_intensity = 1.0 + 0.2 * math.sin(self.sun_glow_pulse)
-        glow_radius = int(40 * glow_intensity)
-        
-        # Draw multiple glow layers
-        for i in range(5):
-            glow_alpha = max(10, int(50 - i * 10))
-            radius = glow_radius - i * 5
-            if radius > 0:
-                # Create a surface for alpha blending
-                glow_surface = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
-                pygame.draw.circle(glow_surface, (*SUN_GLOW, glow_alpha), (radius, radius), radius)
-                self.screen.blit(glow_surface, (sun_x - radius, sun_y - radius))
-        
-        # Draw main sun
-        pygame.draw.circle(self.screen, SUN_YELLOW, (sun_x, sun_y), 25)
-        pygame.draw.circle(self.screen, (255, 255, 150), (sun_x, sun_y), 20)
-        
-        # Sun rays
-        for i in range(8):
-            angle = i * math.pi / 4 + self.sun_glow_pulse * 0.5
-            ray_length = 40 + 5 * math.sin(self.sun_glow_pulse + i)
-            end_x = sun_x + math.cos(angle) * ray_length
-            end_y = sun_y + math.sin(angle) * ray_length
-            start_x = sun_x + math.cos(angle) * 30
-            start_y = sun_y + math.sin(angle) * 30
-            pygame.draw.line(self.screen, SUN_YELLOW, (start_x, start_y), (end_x, end_y), 3)
-    
-    def draw_mountains(self):
-        """Draw distant mountains for atmospheric depth"""
-        # Get horizon line based on Earth position
-        horizon_y = self.earth.y + self.earth.radius + 30
-        
-        # Mountain ranges at different distances for parallax effect
-        mountain_ranges = [
-            {'peaks': [(0, 40), (200, 60), (400, 35), (600, 55), (800, 30), (1000, 45), (1200, 25)], 'color': MOUNTAIN_PURPLE, 'alpha': 60},
-            {'peaks': [(100, 30), (300, 45), (500, 25), (700, 40), (900, 20), (1100, 35)], 'color': MOUNTAIN_BLUE, 'alpha': 40},
-        ]
-        
-        for mountain_range in mountain_ranges:
-            # Create surface for alpha blending
-            mountain_surface = pygame.Surface((SCREEN_WIDTH, 100), pygame.SRCALPHA)
-            
-            # Create mountain silhouette points
-            points = [(0, 100)]  # Start from bottom left
-            
-            for x, height in mountain_range['peaks']:
-                points.append((x, 100 - height))
-            
-            points.append((SCREEN_WIDTH, 100))  # End at bottom right
-            points.append((SCREEN_WIDTH, 100))  # Close the polygon
-            points.append((0, 100))
-            
-            # Draw mountain silhouette
-            pygame.draw.polygon(mountain_surface, (*mountain_range['color'], mountain_range['alpha']), points)
-            
-            # Blit to main screen
-            self.screen.blit(mountain_surface, (0, horizon_y - 70))
-        
-        # Add atmospheric haze
-        haze_surface = pygame.Surface((SCREEN_WIDTH, 50), pygame.SRCALPHA)
-        for y in range(50):
-            alpha = int(30 * (1 - y / 50))  # Fade from opaque to transparent
-            if alpha > 0:
-                pygame.draw.line(haze_surface, (*HORIZON_MIST, alpha), (0, y), (SCREEN_WIDTH, y))
-        
-        self.screen.blit(haze_surface, (0, horizon_y - 20))
-    
-    def draw_clouds(self):
-        """Draw realistic animated clouds"""
-        clouds_data = [
-            {'x': -100 + self.cloud_offset, 'y': 80, 'size': 60, 'speed': 1.0},
-            {'x': 200 + self.cloud_offset * 0.7, 'y': 120, 'size': 80, 'speed': 0.7},
-            {'x': 500 + self.cloud_offset * 1.2, 'y': 60, 'size': 50, 'speed': 1.2},
-            {'x': 800 + self.cloud_offset * 0.8, 'y': 140, 'size': 70, 'speed': 0.8},
-        ]
-        
-        for cloud in clouds_data:
-            if -200 < cloud['x'] < SCREEN_WIDTH + 200:  # Only draw visible clouds
-                self.draw_single_cloud(cloud['x'], cloud['y'], cloud['size'])
-    
-    def draw_single_cloud(self, x, y, size):
-        """Draw a single realistic cloud"""
-        # Cloud shadow
-        shadow_offset = 3
-        cloud_circles = [
-            (x - size//2, y, size//2),
-            (x, y - size//3, size//1.5),
-            (x + size//2, y, size//2),
-            (x - size//4, y + size//4, size//2.5),
-            (x + size//4, y + size//4, size//2.5),
-        ]
-        
-        # Draw shadow
-        for circle_x, circle_y, radius in cloud_circles:
-            pygame.draw.circle(self.screen, CLOUD_GRAY, 
-                             (int(circle_x + shadow_offset), int(circle_y + shadow_offset)), 
-                             int(radius))
-        
-        # Draw main cloud
-        for circle_x, circle_y, radius in cloud_circles:
-            pygame.draw.circle(self.screen, CLOUD_WHITE, 
-                             (int(circle_x), int(circle_y)), int(radius))
-
     def draw_grassland(self):
-        """Draw enhanced realistic grassland with flowers and details"""
+        """Draw realistic grassland below Earth with flowers and design elements"""
         grass_y = self.earth.y + self.earth.radius + 50
-        grass_height = SCREEN_HEIGHT - grass_y
+        pygame.draw.rect(self.screen, GRASS_GREEN, 
+                        (0, grass_y, SCREEN_WIDTH, SCREEN_HEIGHT - grass_y))
         
-        # Draw soil/dirt base
-        soil_rect = pygame.Rect(0, grass_y + grass_height - 20, SCREEN_WIDTH, 20)
-        pygame.draw.rect(self.screen, EARTH_BROWN, soil_rect)
+        # Add realistic grass texture with varying heights and colors
+        grass_colors = [DARK_GRASS, (46, 125, 50), (27, 94, 32)]
+        for i in range(0, SCREEN_WIDTH, 8):
+            # Vary grass height and color for realism
+            grass_height = 8 + (i % 12)
+            color_idx = (i // 8) % len(grass_colors)
+            pygame.draw.line(self.screen, grass_colors[color_idx], 
+                           (i, grass_y), (i, grass_y + grass_height), 2)
+            pygame.draw.line(self.screen, grass_colors[color_idx], 
+                           (i + 3, grass_y), (i + 3, grass_y + grass_height - 2), 1)
         
-        # Draw grass base layer with gradient
-        for y in range(int(grass_y), SCREEN_HEIGHT):
-            ratio = (y - grass_y) / grass_height
-            # Gradient from lighter green at top to darker at bottom
-            r = int(GRASS_GREEN[0] * (1 - ratio * 0.3))
-            g = int(GRASS_GREEN[1] * (1 - ratio * 0.2))
-            b = int(GRASS_GREEN[2] * (1 - ratio * 0.3))
-            pygame.draw.line(self.screen, (r, g, b), (0, y), (SCREEN_WIDTH, y))
-        
-        # Draw detailed grass blades with wind effect
-        wind_offset = math.sin(self.cloud_offset * 0.1) * 2
-        
-        for i in range(0, SCREEN_WIDTH, 3):
-            # Vary grass characteristics
-            grass_base_height = 15 + (i % 20)
-            wind_effect = wind_offset + math.sin(i * 0.05) * 1.5
-            
-            # Multiple grass blade colors for variety
-            grass_colors = [DARK_GRASS, GRASS_GREEN, LIGHT_GRASS]
-            color_idx = (i // 3) % len(grass_colors)
-            grass_color = grass_colors[color_idx]
-            
-            # Draw grass blades with wind sway
-            for blade in range(3):
-                blade_x = i + blade
-                blade_height = grass_base_height + (blade * 3) - (blade % 2) * 5
-                blade_top_x = blade_x + wind_effect + (blade % 2 - 0.5) * 2
-                blade_top_y = grass_y + (blade * 2)
-                blade_bottom_y = grass_y + blade_height
-                
-                # Draw grass blade with varying thickness
-                thickness = 2 if blade % 2 == 0 else 1
-                pygame.draw.line(self.screen, grass_color,
-                               (blade_x, blade_bottom_y),
-                               (blade_top_x, blade_top_y), thickness)
-        
-        # Add flowers scattered throughout the grass
+        # Add flowers scattered across the grassland
         self.draw_flowers(grass_y)
         
-        # Add small details like rocks and patches
-        self.draw_ground_details(grass_y)
+        # Add bushes and small plants
+        self.draw_bushes(grass_y)
+        
+        # Add small rocks and pebbles
+        self.draw_rocks(grass_y)
+        
+        # Add dandelions and wildflowers
+        self.draw_wildflowers(grass_y)
     
     def draw_flowers(self, grass_y):
-        """Draw small flowers scattered in the grass"""
+        """Draw colorful flowers scattered across the grassland"""
+        flower_colors = [
+            (255, 105, 180),  # Hot pink
+            (255, 165, 0),    # Orange
+            (255, 255, 0),    # Yellow
+            (138, 43, 226),   # Blue violet
+            (255, 20, 147),   # Deep pink
+            (255, 69, 0),     # Red orange
+        ]
+        
+        # Draw flowers at specific positions for consistency
         flower_positions = [
-            (150, grass_y + 10), (300, grass_y + 15), (450, grass_y + 8),
-            (600, grass_y + 12), (750, grass_y + 18), (900, grass_y + 6),
-            (1050, grass_y + 14), (200, grass_y + 20), (800, grass_y + 25)
+            (150, grass_y + 15), (300, grass_y + 20), (450, grass_y + 12),
+            (600, grass_y + 18), (750, grass_y + 15), (900, grass_y + 22),
+            (1050, grass_y + 16), (200, grass_y + 25), (350, grass_y + 30),
+            (500, grass_y + 28), (650, grass_y + 24), (800, grass_y + 27),
+            (950, grass_y + 29), (1100, grass_y + 26), (100, grass_y + 35),
+            (250, grass_y + 32), (400, grass_y + 38), (550, grass_y + 34),
+            (700, grass_y + 36), (850, grass_y + 33), (1000, grass_y + 37)
         ]
         
         for i, (x, y) in enumerate(flower_positions):
-            flower_color = FLOWER_COLORS[i % len(FLOWER_COLORS)]
-            
-            # Flower petals
-            petal_size = 3
-            for angle in range(0, 360, 60):  # 6 petals
-                petal_x = x + math.cos(math.radians(angle)) * petal_size
-                petal_y = y + math.sin(math.radians(angle)) * petal_size
-                pygame.draw.circle(self.screen, flower_color, (int(petal_x), int(petal_y)), 2)
-            
-            # Flower center
-            pygame.draw.circle(self.screen, SUN_YELLOW, (x, y), 2)
-            
-            # Flower stem
-            pygame.draw.line(self.screen, DARK_GRASS, (x, y), (x, y + 8), 1)
+            if x < SCREEN_WIDTH:
+                color = flower_colors[i % len(flower_colors)]
+                # Flower petals
+                for j in range(5):
+                    angle = j * 72  # 360/5 = 72 degrees
+                    petal_x = x + int(3 * math.cos(math.radians(angle)))
+                    petal_y = y + int(3 * math.sin(math.radians(angle)))
+                    pygame.draw.circle(self.screen, color, (petal_x, petal_y), 2)
+                # Flower center
+                pygame.draw.circle(self.screen, (255, 255, 0), (x, y), 1)
+                # Flower stem
+                pygame.draw.line(self.screen, (0, 100, 0), (x, y), (x, y + 8), 1)
     
-    def draw_ground_details(self, grass_y):
-        """Draw small rocks and dirt patches for realism"""
-        # Small rocks
-        rock_positions = [(100, grass_y + 25), (400, grass_y + 30), (700, grass_y + 28), (1000, grass_y + 32)]
-        for x, y in rock_positions:
-            # Rock shadow
-            pygame.draw.ellipse(self.screen, (60, 60, 60), (x + 1, y + 1, 8, 4))
-            # Rock
-            pygame.draw.ellipse(self.screen, (128, 128, 128), (x, y, 8, 4))
-            pygame.draw.ellipse(self.screen, (160, 160, 160), (x, y, 6, 3))
+    def draw_bushes(self, grass_y):
+        """Draw small bushes and shrubs"""
+        bush_positions = [
+            (180, grass_y + 20), (380, grass_y + 25), (580, grass_y + 22),
+            (780, grass_y + 24), (980, grass_y + 21), (1180, grass_y + 23)
+        ]
         
-        # Dirt patches
-        dirt_patches = [(250, grass_y + 20), (550, grass_y + 25), (850, grass_y + 22)]
-        for x, y in dirt_patches:
-            pygame.draw.ellipse(self.screen, EARTH_BROWN, (x, y, 15, 8))
-            pygame.draw.ellipse(self.screen, (120, 60, 20), (x + 2, y + 1, 10, 5))
-
+        bush_green = (34, 139, 34)
+        dark_bush = (0, 100, 0)
+        
+        for x, y in bush_positions:
+            if x < SCREEN_WIDTH:
+                # Main bush body
+                pygame.draw.ellipse(self.screen, bush_green, (x - 8, y, 16, 12))
+                # Bush highlight
+                pygame.draw.ellipse(self.screen, (60, 179, 113), (x - 6, y + 1, 12, 4))
+                # Bush shadow
+                pygame.draw.ellipse(self.screen, dark_bush, (x - 7, y + 8, 14, 6))
+    
+    def draw_rocks(self, grass_y):
+        """Draw small rocks and pebbles"""
+        rock_positions = [
+            (120, grass_y + 30), (320, grass_y + 35), (520, grass_y + 32),
+            (720, grass_y + 36), (920, grass_y + 33), (1120, grass_y + 34)
+        ]
+        
+        rock_gray = (105, 105, 105)
+        dark_rock = (69, 69, 69)
+        
+        for x, y in rock_positions:
+            if x < SCREEN_WIDTH:
+                # Main rock
+                pygame.draw.ellipse(self.screen, rock_gray, (x, y, 6, 4))
+                # Rock highlight
+                pygame.draw.ellipse(self.screen, (169, 169, 169), (x + 1, y, 3, 2))
+                # Rock shadow
+                pygame.draw.ellipse(self.screen, dark_rock, (x + 1, y + 2, 4, 3))
+    
+    def draw_wildflowers(self, grass_y):
+        """Draw dandelions and small wildflowers"""
+        wildflower_positions = [
+            (80, grass_y + 18), (280, grass_y + 22), (480, grass_y + 19),
+            (680, grass_y + 21), (880, grass_y + 20), (1080, grass_y + 23)
+        ]
+        
+        for i, (x, y) in enumerate(wildflower_positions):
+            if x < SCREEN_WIDTH:
+                if i % 2 == 0:
+                    # Dandelion
+                    pygame.draw.circle(self.screen, (255, 255, 0), (x, y), 3)
+                    pygame.draw.circle(self.screen, (255, 215, 0), (x, y), 2)
+                    # Dandelion stem
+                    pygame.draw.line(self.screen, (0, 100, 0), (x, y), (x, y + 6), 1)
+                else:
+                    # Small white wildflower
+                    for j in range(4):
+                        angle = j * 90
+                        petal_x = x + int(2 * math.cos(math.radians(angle)))
+                        petal_y = y + int(2 * math.sin(math.radians(angle)))
+                        pygame.draw.circle(self.screen, (255, 255, 255), (petal_x, petal_y), 1)
+                    pygame.draw.circle(self.screen, (255, 255, 0), (x, y), 1)
+                    # Stem
+                    pygame.draw.line(self.screen, (0, 100, 0), (x, y), (x, y + 5), 1)
+    
     def render(self):
-        # Draw realistic sky with gradient, sun, and clouds
-        self.draw_realistic_sky()
+        self.screen.fill(SKY_BLUE)  # Realistic sky background
         
         # Draw Earth
         self.earth.draw(self.screen)
         
         if self.earth_clicked:
-            # Draw enhanced grassland
+            # Draw grassland
             self.draw_grassland()
             
             # Draw radiation waves first (behind satellite)
